@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Extractor — Resume Skill Analyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --bg: #f7fafc;
+      --surface: #ffffff;
+      --muted: #6b7280;
+      --text: #0f172a;
+      --accent: #2563eb;
+      --accent-2: #8b5cf6;
+      --border: #e6e9ef;
+      --card-shadow: rgba(16,24,40,0.06);
+      --c0:#2563eb; --c1:#ef4444; --c2:#10b981; --c3:#f59e0b; --c4:#06b6d4;
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Syne',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+    .wrap{max-width:1100px;margin:0 auto;padding:36px}
+
+    /* Nav */
+    .nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:36px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .brand .logo-badge{font-family:'DM Mono',monospace;color:var(--accent);font-weight:700}
+    .nav-links{display:flex;gap:18px;font-family:'DM Mono',monospace;color:var(--muted);font-size:0.95rem}
+
+    /* Hero */
+    .hero{display:grid;grid-template-columns:1fr 380px;gap:32px;align-items:center;margin-bottom:36px}
+    .hero h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.02;margin-bottom:12px}
+    .hero p.lead{color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:20px}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:0 6px 18px var(--card-shadow)}
+
+    .upload-area{display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;padding:28px;border-radius:12px}
+    .upload-illustration{width:100%;height:160px;background:linear-gradient(180deg,var(--accent)22,transparent);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--accent-2);font-size:48px}
+    .btn-upload{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#fff;padding:12px 18px;border-radius:10px;border:none;cursor:pointer;font-weight:700}
+    .help{font-family:'DM Mono',monospace;color:var(--muted);font-size:0.85rem}
+
+    /* Results */
+    #results{display:none;margin-top:22px}
+    #results.visible{display:block}
+    .result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:20px}
+
+    .stat{padding:18px;border-radius:12px;background:var(--surface);border:1px solid var(--border);text-align:center}
+    .stat .num{font-size:1.6rem;font-weight:800;color:var(--accent)}
+    .stat .label{font-family:'DM Mono',monospace;color:var(--muted);font-size:0.78rem;margin-top:6px}
+
+    .categories-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:20px}
+    .category-card{padding:16px;border-radius:12px;background:var(--surface);border:1px solid var(--border)}
+    .cat-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+    .cat-dot{width:12px;height:12px;border-radius:50%}
+    .cat-name{font-weight:700;font-family:'DM Mono',monospace}
+    .skill-tag{display:inline-block;padding:6px 12px;border-radius:999px;margin:6px 6px 0 0;background:#fff;border:1px solid var(--border);font-family:'DM Mono',monospace;font-size:0.85rem}
+
+    .file-chip{display:inline-flex;align-items:center;gap:8px;background:#eef2ff;border-radius:999px;padding:6px 12px;border:1px solid #e0e7ff;color:var(--accent);font-family:'DM Mono',monospace}
+
+    .loading{display:none;text-align:center;padding:22px}
+    .loading.visible{display:block}
+
+    @media(max-width:900px){.hero{grid-template-columns:1fr}.nav-links{display:none}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav">
+    <div class="brand">
+      <div class="logo-badge">Extractor</div>
+      <div style="color:var(--muted);font-size:0.9rem;font-family:'DM Mono',monospace">v1.0</div>
+    </div>
+    <div class="nav-links">
+      <div>How it works</div>
+      <div>Docs</div>
+      <div>GitHub</div>
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div>
+      <h1>Extract skills from resumes</h1>
+      <p class="lead">Upload a resume and Extractor highlights categories and skills so you can make better hiring decisions faster.</p>
+      <div style="display:flex;gap:12px;align-items:center">
+        <button class="btn-upload" onclick="document.getElementById('fileInput').click()">Upload resume</button>
+        <div class="help">Supports PDF/DOCX • Max 16MB</div>
+      </div>
+      <div id="fileChip" style="margin-top:12px"></div>
+    </div>
+
+    <aside class="card upload-area">
+      <div class="upload-illustration">📄</div>
+      <div class="help">Drop a file here or click upload</div>
+      <input class="file-input" type="file" id="fileInput" accept=".pdf,.docx,.doc" />
+    </aside>
+  </section>
+
+  <div class="error-box" id="errorBox" style="display:none"></div>
+
+  <div class="loading" id="loading">
+    <div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;margin:0 auto;animation:spin 0.9s linear infinite"></div>
+    <p class="help" style="margin-top:12px">Scanning your resume for skills…</p>
+  </div>
+
+  <section id="results">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font-family:'DM Mono',monospace;color:var(--muted);font-size:0.85rem">Candidate</div>
+          <div class="candidate-name" id="candidateName" style="font-size:1.3rem;font-weight:800">—</div>
+        </div>
+        <div class="file-chip skill-badge" id="totalBadge">0 skills found</div>
+      </div>
+
+      <div class="result-grid">
+        <div class="stat"><div class="num" id="statTotal">0</div><div class="label">Skills Found</div></div>
+        <div class="stat"><div class="num" id="statCats">0</div><div class="label">Categories</div></div>
+        <div class="stat"><div class="num" id="statTop">—</div><div class="label">Top Category</div></div>
+      </div>
+
+      <div class="categories-grid" id="categoriesGrid"></div>
+
+      <div style="text-align:center;margin-top:18px">
+        <button class="btn-upload" onclick="resetUI()">Scan another resume</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+  const COLOURS = ['#2563eb','#ef4444','#10b981','#f59e0b','#06b6d4','#8b5cf6','#f472b6','#f97316'];
+
+  const dropZone  = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const loading   = document.getElementById('loading');
+  const results   = document.getElementById('results');
+  const errorBox  = document.getElementById('errorBox');
+
+  // If no explicit dropZone exists in new layout, create a lightweight handler on body
+  const dropTarget = dropZone || document.body;
+
+  dropTarget.addEventListener('dragover', e => { e.preventDefault(); });
+  dropTarget.addEventListener('drop', e => {
+    e.preventDefault();
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file) {
+    document.getElementById('fileChip').innerHTML =
+      `<span class="file-chip">📎 ${file.name}</span>`;
+
+    errorBox.classList.remove('visible');
+    results.classList.remove('visible');
+    loading.classList.add('visible');
+
+    const form = new FormData();
+    form.append('resume', file);
+
+    fetch('/upload', { method: 'POST', body: form })
+      .then(r => r.json())
+      .then(data => {
+        loading.classList.remove('visible');
+        if (data.error) {
+          showError(data.error);
+        } else {
+          renderResults(data);
+        }
+      })
+      .catch(() => {
+        loading.classList.remove('visible');
+        showError('Network error — is the Flask server running?');
+      });
+  }
+
+  function showError(msg) {
+    errorBox.textContent = '⚠  ' + msg;
+    errorBox.classList.add('visible');
+  }
+
+  function renderResults(data) {
+    document.getElementById('candidateName').textContent = data.name || '—';
+    document.getElementById('totalBadge').textContent = `${data.total} skill${data.total !== 1 ? 's' : ''} found`;
+    document.getElementById('statTotal').textContent = data.total;
+    const cats = Object.keys(data.skills);
+    document.getElementById('statCats').textContent = cats.length;
+    document.getElementById('statTop').textContent = topCategory(data.skills);
+
+    const grid = document.getElementById('categoriesGrid');
+    grid.innerHTML = '';
+    cats.forEach((cat,i)=>{
+      const colour = COLOURS[i % COLOURS.length];
+      const skills = data.skills[cat];
+      const card = document.createElement('div');
+      card.className = 'category-card';
+      const tags = skills.map(s=>`<span class="skill-tag" style="border-color:${colour}33;color:${colour}">${s}</span>`).join('');
+      card.innerHTML = `
+        <div class="cat-header">
+          <div class="cat-dot" style="background:${colour}"></div>
+          <div class="cat-name" style="color:${colour}">${cat}</div>
+        </div>
+        <div>${tags}</div>
+      `;
+      grid.appendChild(card);
+    });
+
+    results.classList.add('visible');
+    results.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  function topCategory(skills) {
+    let best = '', max = 0;
+    for (const [cat, arr] of Object.entries(skills)) {
+      if (arr.length > max) { max = arr.length; best = cat.split('/')[0].trim(); }
+    }
+    return best || '—';
+  }
+
+  function resetUI() {
+    results.classList.remove('visible');
+    errorBox.classList.remove('visible');
+    document.getElementById('fileChip').innerHTML = '';
+    fileInput.value = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
