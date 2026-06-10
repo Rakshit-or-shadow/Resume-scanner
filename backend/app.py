@@ -251,5 +251,5 @@ def upload():
 
 
 if __name__ == "__main__":
-    print("🚀  Resume Skill Extractor running at http://localhost:5000")
+    print("Resume Skill Extractor running at http://localhost:5000")
     app.run(debug=True, port=5000)
